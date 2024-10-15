@@ -23,4 +23,5 @@
 ***
 
 > #### Current status:
-> - FFNN has converging example for GD
+> The main function calls the prepare_data function which runs a check if the data exists. If the data does not exist then it runs the get_data to try to download the data through a api call. If the data is found it is then put into a pandas data frame and split into a train and test part and returned in the main function.
+> The plan forward is to implement the rest of the analysis tools needed for the project.
