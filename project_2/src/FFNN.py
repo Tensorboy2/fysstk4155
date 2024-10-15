@@ -74,6 +74,15 @@ class FFNN:
         No output activation function for the output layer
         '''
         return x
+    def classify_output(self,x):
+        '''
+        output activation function gives only 0 or 1
+        '''
+        x = self.sigmoid(x)
+        if x>0.5:
+            return 1
+        else:
+            return 0
 
     def set_optimizer(self,optimizer):
         '''
@@ -86,19 +95,11 @@ class FFNN:
         Feed forward method.
         '''
         input_layer, hidden_layers, output_layer = params
-        # First Layer
-        # print(x.shape)
-        # print(input_layer.shape)
         x = self.activation_function(jnp.dot(x.T,input_layer))
-
-        # Optional multiple hidden layers
         if (self.num_hidden_layers!=0):
             for hidden in hidden_layers:
                 x = self.activation_function(jnp.dot(x,hidden))
-
-        # Last layer
         x = self.output_function(jnp.dot(x,output_layer))
-
         return x
     
     def cost(self,params,y,x):
@@ -302,9 +303,9 @@ if __name__ == '__main__':
                 output_size=output_size_,
                 learning_rate=0.1)
 
-    model.set_optimizer('Adam')
+    model.set_optimizer('AdaGrad with GD')
     model.set_activation_function(model.sigmoid)
-    model.output_function(model.straight_output)
+    model.output_function(model.classify_output)
 
     x_ = np.random.rand(input_size_)
     y_ = np.random.rand(output_size_)
