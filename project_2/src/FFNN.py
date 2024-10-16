@@ -280,7 +280,8 @@ class FFNN:
         Training method.
         '''
         for epoch in range(epochs):
-            self.backprop(y, x)
+            for xi, yi in zip(x,y):
+                self.backprop(yi, xi)
             print(f'Epoch {epoch+1}/{epochs}, Loss: {self.loss:.6f}')
             if self.loss < threshold:
                 print('Convergence reached.')
@@ -296,6 +297,7 @@ if __name__ == '__main__':
     output_size_ = np.random.randint(min, max)
     hidden_size_ = np.random.randint(min, max)
     num_hidden_layers_ = np.random.randint(min, max)
+    data_size = 10
 
     model = FFNN(hidden_size=hidden_size_,
                 num_hidden_layers=num_hidden_layers_,
@@ -303,10 +305,10 @@ if __name__ == '__main__':
                 output_size=output_size_,
                 learning_rate=0.1)
 
-    model.set_optimizer('AdaGrad with GD')
+    model.set_optimizer('SGD with momentum')
     model.set_activation_function(model.sigmoid)
     model.output_function(model.classify_output)
 
-    x_ = np.random.rand(input_size_)
-    y_ = np.random.rand(output_size_)
+    x_ = np.random.rand(data_size,input_size_)
+    y_ = np.random.rand(data_size,output_size_)
     model.train(x=x_, y=y_, epochs=50,threshold=1e-2)
