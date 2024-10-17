@@ -103,10 +103,11 @@ class FFNN:
         Feed forward method.
         '''
         input_layer, hidden_layers, output_layer = params
-        x = self.activation_function(jnp.dot(x.T,input_layer[0])+input_layer[1])
+        x = self.activation_function(jnp.dot(x,input_layer[0])+input_layer[1])
+        # print(len(hidden_layers[0]))
         if (self.num_hidden_layers!=0):
-            for hidden in hidden_layers:
-                x = self.activation_function(jnp.dot(x,hidden[0])+hidden[1])
+            for k in range(self.num_hidden_layers):
+                x = self.activation_function(jnp.dot(x,hidden_layers[0][k])+hidden_layers[1][k])
         # print(output_layer[0].shape)
         # print(output_layer[1].shape)
         # print(x.shape)
@@ -167,15 +168,12 @@ class FFNN:
                                      np.zeros_like(params[2][1])]
                 self.gamma = 0.9
                 
-                M = max(5,self.input_size)
+                M = min(5,self.input_size)
                 m = int(self.input_size/M)
                 for _ in range(m):
                     random_index = M*np.random.randint(0,m)
                     xi = x[random_index:random_index+M]
                     yi = y[random_index:random_index+M]
-
-                    # paramsi_0 = params[0][0][random_index:random_index+M,:]
-                    # paramsi_2 = params[2][0][:,random_index:random_index+M]
 
                     paramsi = [[params[0][0][random_index:random_index+M,:],params[0][1]],
                                 params[1],
@@ -207,7 +205,7 @@ class FFNN:
                 self.cost(params,y,x)
 
             case 'SGD':
-                M = max(5,self.input_size)
+                M = min(5,self.input_size)
                 m = int(self.input_size/M)
                 for _ in range(m):
                     random_index = M*np.random.randint(0,m)
@@ -222,7 +220,6 @@ class FFNN:
                     # gradients = gradient(paramsi,yi,xi)
 
                     # Update input layer:
-                    
                     self.params[0][0][random_index:random_index+M,:] -= self.learning_rate*gradients[0][0]
                     self.params[0][1] -= self.learning_rate*gradients[0][0]
 
@@ -233,36 +230,44 @@ class FFNN:
                     # Update output layer:
                     self.params[2][0][:,random_index:random_index+M] -= self.learning_rate*gradients[2][0]
                     self.params[2][1][random_index:random_index+M] -= self.learning_rate*gradients[2][1]
+
                 self.cost(params,y,x)
 
             case 'AdaGrad with GD':
                 if not hasattr(self,'sum_squared_gradients'):
-                    self.sum_squared_gradients = [np.zeros_like(self.input_layer),
-                                     np.zeros_like(self.hidden_layers),
-                                     np.zeros_like(self.output_layer)]
+                    self.sum_squared_gradients = [[np.zeros_like(self.input_layer[0]),np.zeros_like(self.input_layer[0])],
+                                     [np.zeros_like(self.hidden_layers[0]),np.zeros_like(self.hidden_layers[1])],
+                                     [np.zeros_like(self.output_layer[0]),np.zeros_like(self.output_layer[1])]]
                 delta = 1e-8
                 gradients = grad(self.cost,argnums=0)(params,y,x)
+
                 for j in range(3):
-                    self.sum_squared_gradients[j] += gradients[j]**2
-                    self.params[j] -= self.learning_rate*gradients[j]/(np.sqrt(self.sum_squared_gradients[j])+delta)
+
+                    self.sum_squared_gradients[j][0] += gradients[j][0]**2
+                    self.params[j][0] -= self.learning_rate * gradients[j][0]/(np.sqrt(self.sum_squared_gradients[j][0])+delta) # Weight update
+
+                    self.sum_squared_gradients[j][1] += gradients[j][1]**2
+                    self.params[j][1] -= self.learning_rate * gradients[j][1]/(np.sqrt(self.sum_squared_gradients[j][1])+delta) # Bias update
+                
                 self.cost(params,y,x)
 
             case 'AdaGrad with GD with momentum':
                 if not hasattr(self,'sum_squared_gradients'):
-                    self.sum_squared_gradients = [np.zeros_like(self.input_layer),
-                                     np.zeros_like(self.hidden_layers),
-                                     np.zeros_like(self.output_layer)]
-                    self.velocity = [np.zeros_like(self.input_layer),
-                                     np.zeros_like(self.hidden_layers),
-                                     np.zeros_like(self.output_layer)]
+                    self.sum_squared_gradients = [[np.zeros_like(self.input_layer[0]),np.zeros_like(self.input_layer[0])],
+                                     [np.zeros_like(self.hidden_layers[0]),np.zeros_like(self.hidden_layers[1])],
+                                     [np.zeros_like(self.output_layer[0]),np.zeros_like(self.output_layer[1])]]
+                    self.velocity =  [[np.zeros_like(self.input_layer[0]),np.zeros_like(self.input_layer[0])],
+                                     [np.zeros_like(self.hidden_layers[0]),np.zeros_like(self.hidden_layers[1])],
+                                     [np.zeros_like(self.output_layer[0]),np.zeros_like(self.output_layer[1])]]
                 delta = 1e-8
                 gamma = 0.9
                 learning_rate = self.learning_rate
                 gradients = grad(self.cost,argnums=0)(params,y,x)
                 for j in range(3):
-                    self.sum_squared_gradients[j] += gradients[j]**2
-                    self.velocity[j] = gamma*self.velocity[j] + learning_rate*gradients[j]/(np.sqrt(self.sum_squared_gradients[j])+delta)
-                    self.params[j] -= self.velocity[j]
+                    for jj in range(2):
+                        self.sum_squared_gradients[j][jj] += gradients[j][jj]**2
+                        self.velocity[j][jj] = gamma*self.velocity[j][jj] + learning_rate*gradients[j][jj]/(np.sqrt(self.sum_squared_gradients[j][jj])+delta)
+                        self.params[j][jj] -= self.velocity[j][jj]
                 self.cost(params,y,x)
 
             case 'AdaGrad with SGD':
@@ -277,66 +282,67 @@ class FFNN:
                 if not hasattr(self,'iter'):
                     self.iter = 0
                 if not hasattr(self, 'first_moment'):
-                    self.first_moment = [np.zeros_like(params[0]),
-                                    np.zeros_like(params[1]),
-                                    np.zeros_like(params[2])]
+                    self.first_moment = [[np.zeros_like(self.input_layer[0]),np.zeros_like(self.input_layer[0])],
+                                     [np.zeros_like(self.hidden_layers[0]),np.zeros_like(self.hidden_layers[1])],
+                                     [np.zeros_like(self.output_layer[0]),np.zeros_like(self.output_layer[1])]]
                     
-                    self.second_moment = [np.zeros_like(params[0]),
-                                    np.zeros_like(params[1]),
-                                    np.zeros_like(params[2])]
+                    self.second_moment = [[np.zeros_like(self.input_layer[0]),np.zeros_like(self.input_layer[0])],
+                                     [np.zeros_like(self.hidden_layers[0]),np.zeros_like(self.hidden_layers[1])],
+                                     [np.zeros_like(self.output_layer[0]),np.zeros_like(self.output_layer[1])]]
                 self.iter +=1
                 beta1 = 0.9
                 beta2 = 0.99
                 delta = 1e-8
-                M = 5
+                M = min(5,self.input_size)
                 m = int(self.input_size/M)
                 for _ in range(m):
                     random_index = M*np.random.randint(0,m)
                     xi = x[random_index:random_index+M]
                     yi = y[random_index:random_index+M]
 
-                    paramsi_0 = params[0][random_index:random_index+M,:]
-                    paramsi_2 = params[2][:,random_index:random_index+M]
-
-                    paramsi = [paramsi_0, params[1], paramsi_2]
+                    paramsi = [[params[0][0][random_index:random_index+M,:],params[0][1]],
+                                params[1],
+                                [params[2][0][:,random_index:random_index+M],params[2][1][random_index:random_index+M]]]
 
                     gradients = grad(self.cost,argnums=0)(paramsi,yi,xi)
 
                     slicing = [[slice(random_index,random_index+M),slice(None)],
                                [slice(None),slice(None)],
                                [slice(None),slice(random_index,random_index+M)]]
+                    
                     for j,s in enumerate(slicing):
                         # Caluclate moments:
-                        self.first_moment[j][s[0],s[1]] = beta1*self.first_moment[j][s[0],s[1]] + (1-beta1)*gradients[j]
-                        self.second_moment[j][s[0],s[1]] = beta2*self.second_moment[j][s[0],s[1]] + (1-beta2)*gradients[j]*gradients[j]
+                        self.first_moment[j][0][s[0],s[1]] = beta1*self.first_moment[j][0][s[0],s[1]] + (1-beta1)*gradients[j][0]
+                        self.second_moment[j][0][s[0],s[1]] = beta2*self.second_moment[j][0][s[0],s[1]] + (1-beta2)*gradients[j][0]*gradients[j][0]
                         
                         # Calculate terms:
-                        first_term = self.first_moment[j][s[0],s[1]]/(1.0-beta1**self.iter)
-                        second_term = self.second_moment[j][s[0],s[1]]/(1.0-beta2**self.iter)
+                        first_term = self.first_moment[j][0][s[0],s[1]]/(1.0-beta1**self.iter)
+                        second_term = self.second_moment[j][0][s[0],s[1]]/(1.0-beta2**self.iter)
                         
                         # Update params:
-                        self.params[j][s[0],s[1]] -= self.learning_rate*first_term/(np.sqrt(second_term)+delta)
+                        self.params[j][0][s[0],s[1]] -= self.learning_rate*first_term/(np.sqrt(second_term)+delta)
 
-                    # Update input params:
-                    # self.first_moment[0][random_index:random_index+M,:] = beta1*self.first_moment[0][random_index:random_index+M,:] + (1-beta1)*gradients[0]
-                    # self.second_moment[0][random_index:random_index+M,:] = beta2*self.second_moment[0][random_index:random_index+M,:] + (1-beta2)*gradients[0]*gradients[0]
-                    # first_term = self.first_moment[0][random_index:random_index+M,:]/(1.0-beta1**self.iter)
-                    # second_term = self.second_moment[0][random_index:random_index+M,:]/(1.0-beta2**self.iter)
-                    # self.params[0][random_index:random_index+M,:] -= self.learning_rate*first_term/(np.sqrt(second_term)+delta)
+                        if j==2: # this is simply because the output needs slicing.
+                            self.first_moment[j][1][s[1]] = beta1*self.first_moment[j][1][s[1]] + (1-beta1)*gradients[j][1]
+                            self.second_moment[j][1][s[1]] = beta2*self.second_moment[j][1][s[1]] + (1-beta2)*gradients[j][1]*gradients[j][1]
+                            
+                            # Calculate terms:
+                            first_term = self.first_moment[j][1][s[1]]/(1.0-beta1**self.iter)
+                            second_term = self.second_moment[j][1][s[1]]/(1.0-beta2**self.iter)
+                            
+                            # Update params:
+                            self.params[j][1][s[1]] -= self.learning_rate*first_term/(np.sqrt(second_term)+delta)
+                        else:
+                            self.first_moment[j][1] = beta1*self.first_moment[j][1] + (1-beta1)*gradients[j][1]
+                            self.second_moment[j][1] = beta2*self.second_moment[j][1] + (1-beta2)*gradients[j][1]*gradients[j][1]
+                            
+                            # Calculate terms:
+                            first_term = self.first_moment[j][1]/(1.0-beta1**self.iter)
+                            second_term = self.second_moment[j][1]/(1.0-beta2**self.iter)
+                            
+                            # Update params:
+                            self.params[j][1] -= self.learning_rate*first_term/(np.sqrt(second_term)+delta)
 
-                    # # Update hidden params:
-                    # self.first_moment[1] = beta1*self.first_moment[1] + (1-beta1)*gradients[1]
-                    # self.second_moment[1] = beta2*self.second_moment[1] + (1-beta2)*gradients[1]*gradients[1]
-                    # first_term = self.first_moment[1]/(1.0-beta1**self.iter)
-                    # second_term = self.second_moment[1]/(1.0-beta2**self.iter)
-                    # self.params[1] -= self.learning_rate*first_term/(np.sqrt(second_term)+delta)
-  
-                    # # Update output params:
-                    # self.first_moment[2][:,random_index:random_index+M] = beta1*self.first_moment[2][:,random_index:random_index+M] + (1-beta1)*gradients[2]
-                    # self.second_moment[2][:,random_index:random_index+M] = beta2*self.second_moment[2][:,random_index:random_index+M] + (1-beta2)*gradients[2]*gradients[2]
-                    # first_term = self.first_moment[2][:,random_index:random_index+M]/(1.0-beta1**self.iter)
-                    # second_term = self.second_moment[2][:,random_index:random_index+M]/(1.0-beta2**self.iter)
-                    # self.params[2][:,random_index:random_index+M] -= self.learning_rate*first_term/(np.sqrt(second_term)+delta)
 
                 self.cost(params,y,x)
 
@@ -359,10 +365,10 @@ class FFNN:
 if __name__ == '__main__':
     min_ = 5
     max_ = 50
-    input_size_ = 10#np.random.randint(min, max)
-    output_size_ = 10#np.random.randint(min, max)
-    hidden_size_ = 10#np.random.randint(min, max)
-    num_hidden_layers_ = 2#np.random.randint(min, max)
+    input_size_ = 10 #np.random.randint(min, max)
+    output_size_ = 5 #np.random.randint(min, max)
+    hidden_size_ = 5 #np.random.randint(min, max)
+    num_hidden_layers_ = 5 #np.random.randint(min, max)
     data_size = 10
 
     model = FFNN(hidden_size=hidden_size_,
@@ -371,7 +377,7 @@ if __name__ == '__main__':
                 output_size=output_size_,
                 learning_rate=0.01)
 
-    model.set_optimizer('SGD')
+    model.set_optimizer('AdaGrad with GD with momentum')
     model.set_activation_function(model.sigmoid)
     model.output_function(model.classify_output)
 
