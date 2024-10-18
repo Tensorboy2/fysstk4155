@@ -2,6 +2,7 @@
 import numpy as np
 import jax.numpy as jnp
 from jax import grad
+import sys
 np.random.seed(42)
 class FFNN:
     '''
@@ -351,9 +352,14 @@ class FFNN:
         '''
         Training method.
         '''
+        j = len(x)
         for epoch in range(epochs):
+            n = 0
             for xi, yi in zip(x,y):
                 self.backprop(yi, xi)
+                n+=1
+                sys.stdout.write(f"\rProgress: {100*n/j}%, ")
+                sys.stdout.flush()
             print(f'Epoch {epoch+1}/{epochs}, Loss: {self.loss:.6f}')
             if self.loss < threshold:
                 print('Convergence reached.')
@@ -369,18 +375,18 @@ if __name__ == '__main__':
     output_size_ = 5 #np.random.randint(min, max)
     hidden_size_ = 5 #np.random.randint(min, max)
     num_hidden_layers_ = 5 #np.random.randint(min, max)
-    data_size = 10
+    data_size = 100
 
     model = FFNN(hidden_size=hidden_size_,
                 num_hidden_layers=num_hidden_layers_,
                 input_size=input_size_,
                 output_size=output_size_,
-                learning_rate=0.01)
+                learning_rate=0.001)
 
-    model.set_optimizer('AdaGrad with GD with momentum')
+    model.set_optimizer('Adam')
     model.set_activation_function(model.sigmoid)
     model.output_function(model.classify_output)
 
     x_ = np.random.rand(data_size,input_size_)
     y_ = np.random.rand(data_size,output_size_)
-    model.train(x=x_, y=y_, epochs=50,threshold=1e-6)
+    model.train(x=x_, y=y_, epochs=20,threshold=1e-6)
