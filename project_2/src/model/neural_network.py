@@ -79,7 +79,7 @@ class NeuralNetwork:
         # print('hei')
         # print(predictions.shape)
         # print(y.shape)
-        return jp.mean((predictions- y)**2)
+        return jp.mean((predictions- y)**2 + 0.1)
 
     def cross_entropy_loss(self,params,x,y):
         '''Cross entropy cost function'''

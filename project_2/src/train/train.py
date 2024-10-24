@@ -14,6 +14,7 @@ class Trainer:
               x_train,
               y_train,
               epochs,
+              threshold=1e-12,
               batch_size=None,
               x_val=None,
               y_val=None):
@@ -23,10 +24,10 @@ class Trainer:
         if (batch_size is None) and self.optimizer.use_mini_batch==False:
             batch_size = len(x_train)
 
-        # num_batches = len(x_train) // batch_size
-
+        num_batches = len(x_train) // batch_size
+        
         for epoch in range(epochs):
-            loss = 0
+            batch_loss = 0
             n = 0
             indices = np.arange(len(x_train))
             np.random.shuffle(indices)
@@ -38,22 +39,29 @@ class Trainer:
                 y_batch = y_train_shuffled[i:i + batch_size]
 
                 
-                batch_loss = self.loss_fn(params, x_batch, y_batch)
+                batch_lossi = self.loss_fn(params, x_batch, y_batch)
                 grads = grad(self.loss_fn)(params, x_batch, y_batch)
 
                 self.optimizer.step(params, grads)
 
-                loss += batch_loss
+                batch_loss += batch_lossi
                 n += len(x_batch)
-                sys.stdout.write(f"\rProgress: {100 * n / len(x_train):.0f}%, ")
+                sys.stdout.write(f"\rProgress: {100 * n / len(x_train)}%, ")
+                sys.stdout.write(f"\rbatchlossi: {batch_lossi}, batchloss: {batch_loss} ")
                 sys.stdout.flush()
-            if np.isnan(loss):
+            # loss = self.loss_fn(params, x_train, y_train)
+            print(f'\nEpoch: {epoch+1}, loss = {batch_loss/num_batches} , batch_loss= {batch_loss/len(y_train)}')
+            if batch_loss/num_batches < threshold:
+                print(f'Threshold reached: {threshold} > loss ={batch_loss/num_batches}')
+                break
+
+            if np.isnan(batch_loss):
                 print('Loss turned nan. Check lr and grads.')
+                break
             if hasattr(self.optimizer,'square_gradeints'):
                 self.optimizer.square_gradients=None
             if hasattr(self.optimizer,'first_momentum'):
                 self.optimizer.first_momentum=None
                 self.optimizer.iter=0
-            print(f'\nEpoch: {epoch+1}, avg_loss= {loss/len(y_train):.8f}')
 
 
