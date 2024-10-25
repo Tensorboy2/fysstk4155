@@ -18,6 +18,12 @@ class NeuralNetwork:
         self.params = self.initialize_params(input_size,
                                              hidden_sizes,
                                              output_size)
+        self.gamma = {}  # Scaling factor
+        self.beta = {}   # Shifting factor
+        # Initialize gamma and beta to 1 and 0, respectively, for each layer where batch normalization is applied
+        for i in range(1, self.hidden_layers+1):
+            self.gamma[f'gamma{i}'] = jp.ones(hidden_sizes[i-1])
+            self.beta[f'beta{i}'] = jp.zeros(hidden_sizes[i-1])
 
     def initialize_params(self,
                           input_size,
@@ -30,8 +36,9 @@ class NeuralNetwork:
 
         for i in range(1,len(all_layers)):
             # print(i)
-            params[f'W{i}'] = np.random.randn(all_layers[i],all_layers[i-1])*0.01
-            params[f'b{i}'] = np.random.randn(all_layers[i],1)*0.1#np.zeros((all_layers[i],1))
+            params[f'W{i}'] = np.random.randn(all_layers[i],all_layers[i-1])*0.1
+            params[f'b{i}'] = np.random.randn(all_layers[i],1)*0.1#
+            # params[f'b{i}'] = np.zeros((all_layers[i],1))
         # print('1 hei')
         return params
 
@@ -48,10 +55,17 @@ class NeuralNetwork:
         else:
             return z
 
-    def soft_max(self,z):
-        '''Soft max function for classification problems'''
-        exp_z = jp.exp(z-jp.max(z,axis=0,keepdims=True))
-        return exp_z / jp.sum(exp_z,axis=0,keepdims=True)
+    def batch_norm(self, x, gamma ,beta , eps=1e-5):
+        '''Batch normalization function.'''
+        mu = jp.mean(x, axis=0)
+        var = jp.var(x, axis=0)
+        x_hat = (x - mu) / jp.sqrt(var + eps)
+        return gamma * x_hat + beta
+
+    # def soft_max(self,z):
+    #     '''Soft max function for classification problems'''
+    #     exp_z = jp.exp(z-jp.max(z,axis=0,keepdims=True))
+    #     return exp_z / jp.sum(exp_z,axis=0,keepdims=True)
 
     def forward(self,params,x):
         '''Feed forward method'''
@@ -61,6 +75,9 @@ class NeuralNetwork:
             b = params[f'b{i}']
             x = jp.dot(x,W.T)
             x = x+b.flatten()
+            gamma = self.gamma[f'gamma{i}']
+            beta = self.beta[f'beta{i}']
+            x = self.batch_norm(x, gamma, beta)
             x = self.activate(x,self.activation)
         
         out_index = len(params)//2
@@ -81,8 +98,12 @@ class NeuralNetwork:
         # print(y.shape)
         return jp.mean((predictions- y)**2 + 0.1)
 
-    def cross_entropy_loss(self,params,x,y):
+    def cross_entropy_loss(self,params,x,y, l2_lambda=0.9):
         '''Cross entropy cost function'''
         predictions = self.forward(params,x)
+        cross_entropy = -jp.mean(y * jp.log(predictions + 1e-9))
+        return cross_entropy
         # print(predictions)
-        return  - jp.sum(y*jp.log(predictions+1e-9))
+        # cross_entropy = -jp.mean(y * jp.log(predictions + 1e-9) + (1 - y) * jp.log(1 - predictions + 1e-9))
+        # l2_penalty = l2_lambda * jp.sum(jp.array([jp.sum(w**2) for w in params.values() if 'W' in w]))
+        # return cross_entropy + l2_penalty

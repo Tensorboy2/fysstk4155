@@ -2,7 +2,7 @@
 import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from .get_data import get_data
+from get_data import get_data
 data_path = 'project_2/data/kaggle_data/data.csv'
 
 def prepare_data(test_size=0.8):
@@ -29,7 +29,7 @@ def prepare_data(test_size=0.8):
     x = df.drop(['id','diagnosis'],axis=1)
     y = df['diagnosis']
 
-    x_train, x_test, y_train, y_test = train_test_split(x,y,train_size=test_size)
+    x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=test_size)
     return x_train, x_test, y_train, y_test
 if __name__ == '__main__':
     prepare_data()

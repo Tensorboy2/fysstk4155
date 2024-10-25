@@ -14,7 +14,7 @@ class Trainer:
               x_train,
               y_train,
               epochs,
-              threshold=1e-12,
+              threshold=1e-6,
               batch_size=None,
               x_val=None,
               y_val=None):
@@ -46,11 +46,11 @@ class Trainer:
 
                 batch_loss += batch_lossi
                 n += len(x_batch)
-                sys.stdout.write(f"\rProgress: {100 * n / len(x_train)}%, ")
-                sys.stdout.write(f"\rbatchlossi: {batch_lossi}, batchloss: {batch_loss} ")
-                sys.stdout.flush()
-            # loss = self.loss_fn(params, x_train, y_train)
-            print(f'\nEpoch: {epoch+1}, loss = {batch_loss/num_batches} , batch_loss= {batch_loss/len(y_train)}')
+                # sys.stdout.write(f"\rProgress: {100 * n / len(x_train)}%, ")
+                # sys.stdout.write(f"\rbatchlossi: {batch_lossi}, batchloss: {batch_loss} ")
+                # sys.stdout.flush()
+            loss = self.loss_fn(params, x_train, y_train)
+            print(f'\nEpoch: {epoch+1}, loss = {loss} , avg_batch_loss= {batch_loss/num_batches}')
             if batch_loss/num_batches < threshold:
                 print(f'Threshold reached: {threshold} > loss ={batch_loss/num_batches}')
                 break
