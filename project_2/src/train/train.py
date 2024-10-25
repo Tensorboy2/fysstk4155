@@ -21,7 +21,7 @@ class Trainer:
         '''Trianing method'''
         params = self.model.params
         
-        if (batch_size is None) and self.optimizer.use_mini_batch==False:
+        if (batch_size is None) and self.optimizer.use_mini_batch is False:
             batch_size = len(x_train)
 
         num_batches = len(x_train) // batch_size
@@ -62,6 +62,6 @@ class Trainer:
                 self.optimizer.square_gradients=None
             if hasattr(self.optimizer,'first_momentum'):
                 self.optimizer.first_momentum=None
-                self.optimizer.iter=0
+                # self.optimizer.iter=0
 
 

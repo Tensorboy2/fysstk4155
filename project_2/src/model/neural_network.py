@@ -36,8 +36,8 @@ class NeuralNetwork:
 
         for i in range(1,len(all_layers)):
             # print(i)
-            params[f'W{i}'] = np.random.randn(all_layers[i],all_layers[i-1])*0.1
-            params[f'b{i}'] = np.random.randn(all_layers[i],1)*0.1#
+            params[f'W{i}'] = np.random.randn(all_layers[i],all_layers[i-1])#*0.1
+            params[f'b{i}'] = np.random.randn(all_layers[i],1)#*0.1
             # params[f'b{i}'] = np.zeros((all_layers[i],1))
         # print('1 hei')
         return params
@@ -85,6 +85,8 @@ class NeuralNetwork:
         b = params[f'b{out_index}']
         x = jp.dot(x,W.T)
         x = x+b.flatten()
+        # for i in range(10):
+        #     x = self.activate(x,'sigmoid')
         x = self.activate(x,self.out)
 
         return x

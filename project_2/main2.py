@@ -21,29 +21,33 @@ def classification():
 
     x_train = x_train.values[:,:-1] 
     input_size = x_train.shape[1]
-    hidden_sizes = [4]
+    hidden_sizes = [30,30]
     output_size = len(y_train.shape)
 
     NN_model = NeuralNetwork(input_size=input_size,
                              hidden_sizes=hidden_sizes,
                              output_size=output_size,
-                             activiation='relu',
+                             activiation='leaky_relu',
                              out='sigmoid')
-    optimizer = Adam(learning_rate=0.001,
+    optimizer = Adam(learning_rate=0.00001,
                     use_momentum=True)
     trainer = Trainer(model=NN_model,
                       optimizer=optimizer,
                       loss_fn=NN_model.cross_entropy_loss)
-    y_train = np.where(y_train == 'M', 1, 0)
+    y_train = np.where(y_train == 'M', 0, 1)
     print(x_train.shape)
     trainer.train(x_train=x_train,
                   y_train=y_train,
-                  epochs=1000,
-                  batch_size=int(len(y_train)))
+                  epochs=200,
+                  batch_size=int(len(y_train)/4))
     
     x_test = x_test.values[:,:-1]
-    y_test = np.where(y_test == 'M', 1, 0)
+    y_test = np.where(y_test == 'M', 0, 1)
     y_pred = NN_model.forward(NN_model.params,x_test)
+    y_pred_train = NN_model.forward(NN_model.params,x_train)
+
+    for pred, target in zip(y_pred_train, y_train):
+        print(pred, target)
     for pred, target in zip(y_pred, y_test):
         print(pred, target)
     print(accuracy(y_pred,y_test))

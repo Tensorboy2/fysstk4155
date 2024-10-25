@@ -2,7 +2,7 @@
 import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from get_data import get_data
+from .get_data import get_data
 data_path = 'project_2/data/kaggle_data/data.csv'
 
 def prepare_data(test_size=0.8):
