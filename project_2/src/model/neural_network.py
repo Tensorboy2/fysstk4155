@@ -102,10 +102,11 @@ class NeuralNetwork:
 
     def cross_entropy_loss(self,params,x,y, l2_lambda=0.9):
         '''Cross entropy cost function'''
+        # Without penalty:
         predictions = self.forward(params,x)
-        cross_entropy = -jp.mean(y * jp.log(predictions + 1e-9))
+        cross_entropy = jp.mean(-y * jp.log(predictions + 1e-9))
         return cross_entropy
-        # print(predictions)
+        # With penalty:
         # cross_entropy = -jp.mean(y * jp.log(predictions + 1e-9) + (1 - y) * jp.log(1 - predictions + 1e-9))
         # l2_penalty = l2_lambda * jp.sum(jp.array([jp.sum(w**2) for w in params.values() if 'W' in w]))
         # return cross_entropy + l2_penalty

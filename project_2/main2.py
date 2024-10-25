@@ -10,10 +10,15 @@ from src.optimizer.adam import Adam
 from src.train.train import Trainer
 from data.prepare_data import prepare_data
 
+from sklearn.metrics import accuracy_score
+
 def accuracy(y_pred, y_test):
     '''acc func'''
-    acc = np.sum(y_pred-y_test)/len(y_test)
-    return acc
+    acc = 0
+    for pred, t in zip(y_pred, y_test):
+        if np.abs(pred-t)<=0.01:
+            acc+=1
+    return acc/len(y_test)
 def classification():
     '''Classification function'''
     
@@ -21,7 +26,7 @@ def classification():
 
     x_train = x_train.values[:,:-1] 
     input_size = x_train.shape[1]
-    hidden_sizes = [30,30]
+    hidden_sizes = [20]
     output_size = len(y_train.shape)
 
     NN_model = NeuralNetwork(input_size=input_size,
@@ -29,28 +34,29 @@ def classification():
                              output_size=output_size,
                              activiation='leaky_relu',
                              out='sigmoid')
-    optimizer = Adam(learning_rate=0.00001,
+    optimizer = Adam(learning_rate=0.0001,
                     use_momentum=True)
     trainer = Trainer(model=NN_model,
                       optimizer=optimizer,
                       loss_fn=NN_model.cross_entropy_loss)
-    y_train = np.where(y_train == 'M', 0, 1)
+    y_train = np.where(y_train == 'M', 0.0, 1.1)
     print(x_train.shape)
     trainer.train(x_train=x_train,
                   y_train=y_train,
-                  epochs=200,
+                  epochs=100,
                   batch_size=int(len(y_train)/4))
     
     x_test = x_test.values[:,:-1]
     y_test = np.where(y_test == 'M', 0, 1)
     y_pred = NN_model.forward(NN_model.params,x_test)
+    y_pred = np.where(y_pred<0.5, 0,1)
     y_pred_train = NN_model.forward(NN_model.params,x_train)
 
     for pred, target in zip(y_pred_train, y_train):
         print(pred, target)
     for pred, target in zip(y_pred, y_test):
         print(pred, target)
-    print(accuracy(y_pred,y_test))
+    print(accuracy_score(y_test,y_pred.flatten()))
     
 
 

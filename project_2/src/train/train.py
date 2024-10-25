@@ -45,7 +45,7 @@ class Trainer:
                 self.optimizer.step(params, grads)
 
                 batch_loss += batch_lossi
-                n += len(x_batch)
+                # n += len(x_batch)
                 # sys.stdout.write(f"\rProgress: {100 * n / len(x_train)}%, ")
                 # sys.stdout.write(f"\rbatchlossi: {batch_lossi}, batchloss: {batch_loss} ")
                 # sys.stdout.flush()
