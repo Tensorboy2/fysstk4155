@@ -18,6 +18,7 @@ class GD(Optimizer):
             for key in params.keys():
                 self.velocity[key] = self.momentum*self.velocity[key] + self.learning_rate*gradients[key]
                 params[key] -= self.velocity[key]
+                # print(gradients[key].shape)
         else:
             for key in params.keys():
                 params[key] -= self.learning_rate * gradients[key]

@@ -4,9 +4,9 @@ import numpy as np
 
 class SGD(Optimizer):
     '''Gradient decent class'''
-    def __init__(self, learning_rate=0.001, use_momentum=False, momentum=0.9):
+    def __init__(self, learning_rate=0.001, use_momentum=False, momentum=0.9, use_mini_batch=True):
         super().__init__(learning_rate, use_momentum, momentum)
-        self.use_mini_batch=True
+        self.use_mini_batch=use_mini_batch
     def step(self, params, gradients):
         '''step in gradient decent method optimization'''
         if self.use_momentum:

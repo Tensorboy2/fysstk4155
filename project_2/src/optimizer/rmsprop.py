@@ -9,7 +9,7 @@ class RMSprop(Optimizer):
                  delta = 1e-8,
                  use_momentum=False,
                  rho=0.99,
-                 use_mini_batch=False):
+                 use_mini_batch=True):
         super().__init__(learning_rate, use_momentum)
         self.delta = delta
         self.rho = rho

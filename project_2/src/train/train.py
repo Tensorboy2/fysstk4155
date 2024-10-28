@@ -25,10 +25,9 @@ class Trainer:
             batch_size = len(x_train)
 
         num_batches = len(x_train) // batch_size
-        
+        loss_array = np.zeros(epochs)
         for epoch in range(epochs):
             batch_loss = 0
-            n = 0
             indices = np.arange(len(x_train))
             np.random.shuffle(indices)
             x_train_shuffled = x_train[indices]
@@ -40,17 +39,14 @@ class Trainer:
 
                 
                 batch_lossi = self.loss_fn(params, x_batch, y_batch)
-                grads = grad(self.loss_fn)(params, x_batch, y_batch)
+                grads = grad(self.loss_fn,argnums=0)(params, x_batch, y_batch)
 
                 self.optimizer.step(params, grads)
 
                 batch_loss += batch_lossi
-                # n += len(x_batch)
-                # sys.stdout.write(f"\rProgress: {100 * n / len(x_train)}%, ")
-                # sys.stdout.write(f"\rbatchlossi: {batch_lossi}, batchloss: {batch_loss} ")
-                # sys.stdout.flush()
             loss = self.loss_fn(params, x_train, y_train)
-            print(f'\nEpoch: {epoch+1}, loss = {loss} , avg_batch_loss= {batch_loss/num_batches}')
+            loss_array[epoch] = loss
+            # print(f'\nEpoch: {epoch+1}, loss = {loss} , avg_batch_loss= {batch_loss/num_batches}')
             if batch_loss/num_batches < threshold:
                 print(f'Threshold reached: {threshold} > loss ={batch_loss/num_batches}')
                 break
@@ -62,6 +58,6 @@ class Trainer:
                 self.optimizer.square_gradients=None
             if hasattr(self.optimizer,'first_momentum'):
                 self.optimizer.first_momentum=None
-                # self.optimizer.iter=0
+        return loss_array
 
 

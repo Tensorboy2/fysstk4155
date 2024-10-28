@@ -9,18 +9,22 @@ class NeuralNetwork:
                  input_size,
                  hidden_sizes,
                  output_size,
-                 activiation = 'sigmoid',
-                 out = None):
+                 activation = 'sigmoid',
+                 out = None,
+                 use_l2 = False,
+                 l2 = 0.1):
         self.hidden_layers = len(hidden_sizes)
         self.hidden_sizes = hidden_sizes
-        self.activation = activiation
+        self.activation = activation
         self.out = out
+        self.use_l2 = use_l2
+        self.l2 = l2
         self.params = self.initialize_params(input_size,
                                              hidden_sizes,
                                              output_size)
-        self.gamma = {}  # Scaling factor
-        self.beta = {}   # Shifting factor
-        # Initialize gamma and beta to 1 and 0, respectively, for each layer where batch normalization is applied
+        # Batch normalization:
+        self.gamma = {}
+        self.beta = {}
         for i in range(1, self.hidden_layers+1):
             self.gamma[f'gamma{i}'] = jp.ones(hidden_sizes[i-1])
             self.beta[f'beta{i}'] = jp.zeros(hidden_sizes[i-1])
@@ -32,14 +36,11 @@ class NeuralNetwork:
         '''Initialize the parametes'''
         params = {}
         all_layers = [input_size] + hidden_sizes + [output_size]
-        # print(len(all_layers))
 
         for i in range(1,len(all_layers)):
-            # print(i)
             params[f'W{i}'] = np.random.randn(all_layers[i],all_layers[i-1])#*0.1
             params[f'b{i}'] = np.random.randn(all_layers[i],1)#*0.1
             # params[f'b{i}'] = np.zeros((all_layers[i],1))
-        # print('1 hei')
         return params
 
     def activate(self,z,activation):
@@ -62,14 +63,9 @@ class NeuralNetwork:
         x_hat = (x - mu) / jp.sqrt(var + eps)
         return gamma * x_hat + beta
 
-    # def soft_max(self,z):
-    #     '''Soft max function for classification problems'''
-    #     exp_z = jp.exp(z-jp.max(z,axis=0,keepdims=True))
-    #     return exp_z / jp.sum(exp_z,axis=0,keepdims=True)
 
     def forward(self,params,x):
         '''Feed forward method'''
-        # print(len(params))
         for i in range(1, len(params)//2 ):
             W = params[f'W{i}']
             b = params[f'b{i}']
@@ -85,8 +81,6 @@ class NeuralNetwork:
         b = params[f'b{out_index}']
         x = jp.dot(x,W.T)
         x = x+b.flatten()
-        # for i in range(10):
-        #     x = self.activate(x,'sigmoid')
         x = self.activate(x,self.out)
 
         return x
@@ -94,19 +88,42 @@ class NeuralNetwork:
     def mse_loss(self,params,x,y):
         '''Loss'''
         predictions = self.forward(params,x)
-        # print(type(predictions))
-        # print('hei')
-        # print(predictions.shape)
-        # print(y.shape)
-        return jp.mean((predictions- y)**2 + 0.1)
+        if self.use_l2:
+            return jp.mean((predictions- y)**2 + self.l2)
+        else:
+            return jp.mean((predictions- y)**2)
 
-    def cross_entropy_loss(self,params,x,y, l2_lambda=0.9):
+    def cross_entropy_loss(self,params,x,y):
         '''Cross entropy cost function'''
-        # Without penalty:
         predictions = self.forward(params,x)
-        cross_entropy = jp.mean(-y * jp.log(predictions + 1e-9))
-        return cross_entropy
-        # With penalty:
-        # cross_entropy = -jp.mean(y * jp.log(predictions + 1e-9) + (1 - y) * jp.log(1 - predictions + 1e-9))
-        # l2_penalty = l2_lambda * jp.sum(jp.array([jp.sum(w**2) for w in params.values() if 'W' in w]))
-        # return cross_entropy + l2_penalty
+        if self.use_l2:
+            cross_entropy = -jp.mean(y * jp.log(predictions + 1e-9) + (1 - y) * jp.log(1 - predictions + 1e-9)) # normal cross entropy
+            l2_penalty = self.l2 * jp.sum(jp.array([jp.sum(w**2) for w in params.values() if 'W' in w])) # Adds L2 based on the sum of the square of the weights
+            return cross_entropy + l2_penalty
+        else:
+            cross_entropy = jp.mean(-y * jp.log(predictions + 1e-9) + (1 - y) * jp.log(1 - predictions + 1e-9))
+            return cross_entropy
+        
+if __name__ == "__main__":
+    # Define parameters
+    input_size = 30  # Input features
+    hidden_sizes = [64, 32]  # Hidden layer sizes
+    output_size = 1  # Output size (e.g., for binary classification)
+    
+    # Create a NeuralNetwork instance
+    model = NeuralNetwork(input_size, hidden_sizes, output_size, activation='sigmoid', out='sigmoid', use_l2=True, l2=0.1)
+    
+    # Generate random input data (10 samples, 30 features)
+    X = np.random.rand(10, input_size)
+    y = np.random.randint(0, 2, size=(10, 1))  # Example binary target variable (shape should match output)
+
+    # Perform a forward pass
+    predictions = model.forward(model.params, X)
+    print("Predictions:", predictions)
+
+    # Calculate MSE loss
+    loss = model.mse_loss(model.params, X, y)
+    print("MSE Loss:", loss)
+    loss = model.cross_entropy_loss(model.params, X, y)
+    print("Cross entropy Loss:", loss)
+
