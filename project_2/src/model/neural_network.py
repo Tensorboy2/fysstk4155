@@ -1,7 +1,7 @@
 '''Neural network module'''
 import jax.numpy as jp
 import numpy as np
-np.random.seed(42)
+# np.random.seed(42)
 
 class NeuralNetwork:
     '''Neural network'''
