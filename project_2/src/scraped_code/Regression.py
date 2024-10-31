@@ -31,57 +31,74 @@ class Regression:
         '''Analytic inversion OLS.'''
         return np.linalg.inv(self.design_matrix.T@self.design_matrix) @ (self.design_matrix.T @ self.target)
 
-    def ridge_grad(self):
+    def ridge_grad(self,beta):
         '''Analytic gradient of Ridge with respect to MSE.'''
+        return (2.0 / self.n) * (self.design_matrix.T @ ((self.design_matrix @ beta) - self.target) + self.lamda * beta)
 
-    def ridge_inv(self,x,beta,y):
+    def ridge_inv(self):
         '''Analytic inversion Ridge.'''
-        return
-    
+        I = np.eye(self.design_matrix.shape[1])
+        return np.linalg.inv(self.design_matrix.T @ self.design_matrix + self.lamda * I) @ (self.design_matrix.T @ self.target)
     def make_design_matrix(self,x,deg):
         '''Method for generating the design matrix.'''
-        mat = np.ones_like(x)
-        if deg!=0:
-            for j in range(deg-1):
-                mat = np.concatenate((mat,x**(j+1)))
+        mat = np.ones((x.shape[0], deg))
+        for j in range(1, deg):
+            mat[:, j] = x ** j
         self.design_matrix = mat
 
-    def step(self):
+    def step(self,beta,grad,lr):
         '''Step using gradient method on the parameters.'''
-        return
+        return beta - lr * grad
 
-    def train(self,epochs,method,threshold=1e-4):
+    def train(self,epochs,method='OLS',lr=0.01,threshold=1e-4):
         '''Training function for the gradient methods,
         calls the step method
         '''
-        loss = np.zeros_like(epochs)
-        loss = None
-        for _ in range(epochs):
-            loss = self.mse()
-            self.step()
+        if method not in ['OLS', 'Ridge']:
+            raise ValueError("Method must be either 'OLS' or 'Ridge'")
+        self.beta = np.zeros(self.design_matrix.shape[1])
+        grad_fn = self.ols_grad if method == 'OLS' else self.ridge_grad
+        
+        for epoch in range(epochs):
+            grads = grad_fn(self.beta)
+            self.beta = self.step(self.beta, grads, lr)
+            loss = self.mse(self.design_matrix @ self.beta, self.target)
             if loss < threshold:
-                print('Print desired convergence reached')
+                print(f'Epoch {epoch+1}, Loss: {loss:.4f}, Convergence reached at threshold: {threshold}')
                 break
-
+            if epoch % 10 == 0:
+                print(f'Epoch {epoch+1}, Loss: {loss:.4f}')
         self.loss = loss
+        return self.beta, self.loss
 
 
 if __name__ == '__main__':
     # Set seed for reproducibility:
     np.random.seed(42)
 
-    # Let there be a target date to hit:
+    # Let there be a target data to hit:
     x_ = np.linspace(-3,3,100)#.reshape(1,10,10)
-    y_ = 5*x_**2 + 2*x_ + 3
+    y_ = 5*x_**2 + 2*x_ + 3+ np.random.randn(*x_.shape) * 0.1  # Target data with noise
 
     # Make an instance of the model:
     model = Regression(target=y_)
 
     # Use the model to initiate the design matrix:
-    model.make_design_matrix(x_,deg=2)
+    model.make_design_matrix(x_,deg=3) #ChatGPT said we need to use 3
 
     # Analytic inversion:
     beta_ols_anal_inv = model.ols_inv()
+    beta_ridge_anal_inv = model.ridge_inv()
+    
+    print('Analytic solution (OLS):', beta_ols_anal_inv)
+    print('Analytic solution (Ridge):', beta_ridge_anal_inv)
 
-    # Loss of gradient method training:
-    # loss_ols_grad = model.train(epochs=50, method='GD')
+    # Gradient method training:
+    model.train(epochs=1000, method='OLS', lr=0.01)
+    beta_ols_grad = model.beta
+    print('Gradient method solution (OLS):', beta_ols_grad)
+
+    model.train(epochs=1000, method='Ridge', lr=0.01)
+    beta_ridge_grad = model.beta
+    print('Gradient method solution (Ridge):', beta_ridge_grad)
+
