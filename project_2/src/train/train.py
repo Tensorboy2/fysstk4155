@@ -37,7 +37,7 @@ class Trainer:
         '''Training method'''
         params = self.model.params
         
-        if (batch_size is None) and self.optimizer.use_mini_batch is False:
+        if (batch_size is None) or self.optimizer.use_mini_batch is False:
             batch_size = len(x_train)
 
         num_batches = len(x_train) // batch_size
@@ -50,8 +50,8 @@ class Trainer:
             y_train_shuffled = y_train[indices]
 
             # Update learning rate using the schedule
-            learning_rate = self.learning_schedule(epoch, epochs)
-            self.optimizer.learning_rate = learning_rate
+            # learning_rate = self.learning_schedule(epoch, epochs)
+            # self.optimizer.learning_rate = learning_rate
 
             for i in range(0, len(x_train), batch_size):
                 x_batch = x_train_shuffled[i:i + batch_size]
