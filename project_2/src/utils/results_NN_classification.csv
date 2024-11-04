@@ -1,0 +1,2 @@
+Learning Rate,L2 Penalty,Optimizer,Model,Momentum,Mini_batch,Accuracy
+0.01,0.7,SGD,Neural_Network,Momentum: False,Mini-Batch: True,0.6666666666666666

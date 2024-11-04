@@ -15,14 +15,14 @@ def heat_plot(data, filename, title="Heatmap", cmap="viridis", colorbar=True, an
         colorbar (bool): Show color bar.
         annot (bool): Annotate cells with data values.
     """
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(20, 12))
     
     # Create the heatmap
-    sns.heatmap(data, cmap=cmap, cbar=colorbar, annot=annot, fmt=".2f")
+    sns.heatmap(data, cmap=cmap, cbar=colorbar, annot=annot, fmt=".4f")
     
-    plt.title(title, fontsize=16, fontweight='bold')
+    # plt.title(title, fontsize=16, fontweight='bold')
     plt.tight_layout()
-    plt.savefig(f"{filename}.png", dpi=300)
+    plt.savefig(f"{plot_path+filename}.png", dpi=300)
     plt.close()
 
 def loss_plot(data, filename, title="Loss Over Epochs", xlabel="Epochs", ylabel="Loss"):
@@ -69,12 +69,34 @@ def loss_plot(data, filename, title="Loss Over Epochs", xlabel="Epochs", ylabel=
     for j in range(idx + 1, len(axes)):
         fig.delaxes(axes[j])
     
-    fig.suptitle(title, fontsize=18, fontweight='bold')
+    # fig.suptitle(title, fontsize=18, fontweight='bold')
     plt.tight_layout(rect=[0, 0, 1, 0.95])  
-    plt.savefig(f"{filename}.png", dpi=300)
+    plt.savefig(f"{plot_path+filename}.png", dpi=300)
+    plt.close()
+
+plot_path = '/home/sigvar/1_semester/fysstk4155/fysstk_2/project_2/src/utils/'
+
+def activation_plot(data, filename, title="Loss Over Epochs", xlabel="Epochs", ylabel="Loss"):
+    plt.figure(figsize=(10, 8))
+    sns.lineplot(
+            data=data,
+            x="Epoch",
+            y="Loss",
+            hue="Activation_function",
+            markers=True
+        )
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+
+    # plt.title(title, fontsize=16, fontweight='bold')    
+    # plt.tight_layout(rect=[0, 0, 1, 0.95])  
+    plt.savefig(f"{plot_path+filename}.png", dpi=300)
     plt.close()
 
 if __name__ == "__main__":
+    # data = pd.read_csv('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_2/src/utils/different_activation_functions.csv')
+    # activation_plot(data,'Different_activation_functions')
+    # print("Plots saved as 'Different_activation_functions.png'")
 
 
     # data = pd.read_csv('/home/sigvar/1_semester/fysstk4155/fysstk_2/results_regression.csv')
@@ -90,12 +112,11 @@ if __name__ == "__main__":
     NN_heatmap_data = NN.pivot(index="L2 Penalty", columns="Learning Rate", values="Accuracy")
     heat_plot(NN_heatmap_data, filename="NN_heatmap", title="NN Heatmap", cmap="rocket", annot=True)
 
-    # heat = pd.read_csv('/home/sigvar/1_semester/fysstk4155/fysstk_2/results_R_classification.csv')
+    # heat = pd.read_csv('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_2/src/utils/results_R_classification_long.csv')
     # heat = heat[heat['Optimizer']=='SGD']
     # heat = heat.sort_values(by=['Learning Rate', 'L2 Penalty'])
     # R = heat[heat['Model']=='Logistic_regression']
     # R_heatmap_data = R.pivot(index="L2 Penalty", columns="Learning Rate", values="Accuracy")
     # heat_plot(R_heatmap_data, filename="R_heatmap", title="R Heatmap", cmap="rocket", annot=True)
-
 
     print("Plots saved as 'NN_loss_plot.png' and 'R_loss_plot.png'")

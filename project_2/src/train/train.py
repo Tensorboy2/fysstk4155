@@ -30,7 +30,7 @@ class Trainer:
               x_train,
               y_train,
               epochs,
-              threshold=1e-6,
+              threshold=1e-3,
               batch_size=None,
               x_val=None,
               y_val=None):
@@ -42,6 +42,7 @@ class Trainer:
 
         num_batches = len(x_train) // batch_size
         loss_array = np.zeros(epochs)
+        prev_loss = 0
         for epoch in range(epochs):
             batch_loss = 0
             indices = np.arange(len(x_train))
@@ -66,11 +67,11 @@ class Trainer:
                 batch_loss += batch_lossi
             loss = self.loss_fn(params, x_train, y_train)
             loss_array[epoch] = loss
-            # print(f'\nEpoch: {epoch+1}, loss = {loss} , avg_batch_loss= {batch_loss/num_batches}')
-            if batch_loss/num_batches < threshold:
+            print(f'\nEpoch: {epoch+1}, loss = {loss} , avg_batch_loss= {batch_loss/num_batches}')
+            if abs(loss-prev_loss) < threshold:
                 print(f'Threshold reached: {threshold} > loss ={batch_loss/num_batches}')
                 break
-
+                prev_loss=loss
             if np.isnan(batch_loss):
                 print('Loss turned nan. Check lr and grads.')
                 break
