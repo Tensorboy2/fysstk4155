@@ -67,11 +67,12 @@ class Trainer:
                 batch_loss += batch_lossi
             loss = self.loss_fn(params, x_train, y_train)
             loss_array[epoch] = loss
-            print(f'\nEpoch: {epoch+1}, loss = {loss} , avg_batch_loss= {batch_loss/num_batches}')
+            # if (epoch + 1) % 40 == 0:
+            #     print(f'\nEpoch: {epoch+1}, loss = {loss} , avg_batch_loss= {batch_loss/num_batches}')
             if abs(loss-prev_loss) < threshold:
                 print(f'Threshold reached: {threshold} > loss ={batch_loss/num_batches}')
                 break
-                prev_loss=loss
+            # prev_loss=loss
             if np.isnan(batch_loss):
                 print('Loss turned nan. Check lr and grads.')
                 break

@@ -59,14 +59,14 @@ class Regression:
             cross_entropy = -jp.mean(y * jp.log(predictions + 1e-9) + (1 - y) * jp.log(1 - predictions + 1e-9))
             return cross_entropy
 
-    def ols_inv(self):
+    def ols_inv(self,x,y):
         '''Analytic inversion OLS'''
-        return np.linalg.inv(self.X.T @ self.X) @ (self.X.T @ self.target)
+        return np.linalg.inv(x.T @ x) @ (x.T @ y)
 
-    def ridge_inv(self):
+    def ridge_inv(self,x,y,l2):
         '''Analytic inversion Ridge'''
         I = np.eye(self.X.shape[1])
-        return np.linalg.inv(self.X.T @ self.X + self.l2 * I) @ (self.X.T @ self.target)
+        return np.linalg.inv(x.T @ x + l2 * I) @ (x.T @ y)
 
     def call_ols_grad(self):
         '''Calculate analytical OLS gradient'''

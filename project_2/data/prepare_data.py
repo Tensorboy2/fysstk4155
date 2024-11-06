@@ -2,6 +2,7 @@
 import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn import preprocessing
 from .get_data import get_data
 data_path = 'project_2/data/kaggle_data/data.csv'
 
@@ -28,8 +29,11 @@ def prepare_data(test_size=0.8):
     df = pd.read_csv('./project_2/data/kaggle_data/data.csv')
     x = df.drop(['id','diagnosis'],axis=1)
     y = df['diagnosis']
-
     x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=test_size)
+
+    scaler = preprocessing.MinMaxScaler().fit(x.values[:,:-1])
+    x_train = scaler.transform(x_train.values[:,:-1])
+    x_test = scaler.transform(x_test.values[:,:-1])
     return x_train, x_test, y_train, y_test
 if __name__ == '__main__':
     prepare_data()

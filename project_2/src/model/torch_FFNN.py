@@ -10,50 +10,57 @@ class torch_ffnn(nn.Module):
     '''
     Feed Forward Neural Network written using torch.
     '''
-    def __init__(self,input_size, hidden_sizes, output_size):
+    def __init__(self,input_size, hidden_sizes, output_size, classify=False):
         super(torch_ffnn, self).__init__()
 
-        layers = []
-        layers.append(nn.Linear(input_size,hidden_sizes[0]))
-        layers.append(nn.Sigmoid())
+        self.layers = nn.ModuleList()
+        self.layers.append(nn.Linear(input_size, hidden_sizes[0]))
+        self.layers.append(nn.ReLU())
 
-        for i in range(len(hidden_sizes)-1):
-            layers.append(nn.Linear(hidden_sizes[i],hidden_sizes[i+1]))
-            layers.append(nn.Sigmoid())
-        layers.append(nn.Linear(hidden_sizes[-1],output_size))
+        for i in range(len(hidden_sizes) - 1):
+            self.layers.append(nn.Linear(hidden_sizes[i], hidden_sizes[i + 1]))
+            self.layers.append(nn.ReLU())
 
-        self.network = nn.Sequential(*layers)
+        self.layers.append(nn.Linear(hidden_sizes[-1], output_size))
+
+        if classify:
+            self.layers.append(nn.Sigmoid())
 
     def forward(self,x):
         '''
         The feed forward method
         '''
-        return self.network(x)
+        for layer in self.layers:
+            x = layer(x)
+        return x
 
-    def train(self, criterion, optimizer, train_loader, epochs):
+    def train_NN(self, criterion, optimizer, x_train, y_train, epochs):
         '''
         Training function for torch FFNN.
         '''
         self.train()
-        loss = np.zeros(epochs)
+        loss_history = []
+        
         for epoch in range(epochs):
             running_loss = 0.0
 
-            for inputs, targets in train_loader:
-                outputs = self(inputs)
-                loss = criterion(outputs, targets)
-
+            for x, y in zip(x_train,y_train):
                 optimizer.zero_grad()
+                
+                outputs = self.forward(x)
+                # print(outputs,y)
+                loss = criterion(outputs, y)
+
                 loss.backward()
                 optimizer.step()
 
                 running_loss += loss.item()
-            loss[epoch] = running_loss
-        return loss
-            # print(f"Epoch [{epoch + 1}/{epochs}], Loss: {running_loss / len(train_loader):.4f}")
+            loss_history.append(running_loss/len(y_train))
+            # print(f"Epoch [{epoch + 1}/{epochs}], Loss: {running_loss/len(y_train):.8f}")
+        return np.array(loss_history)
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
     # Setting parameters
     # input_size_ = torch.randint(10,100,(1,))
     # hidden_size_ = torch.randint(10,100,(1,))

@@ -39,8 +39,8 @@ class NeuralNetwork:
 
         for i in range(1,len(all_layers)):
             params[f'W{i}'] = np.random.randn(all_layers[i],all_layers[i-1])#*0.1
-            params[f'b{i}'] = np.random.randn(all_layers[i],1)#*0.1
-            # params[f'b{i}'] = np.zeros((all_layers[i],1))
+            # params[f'b{i}'] = np.random.randn(all_layers[i],1)*0.1
+            params[f'b{i}'] = np.zeros((all_layers[i],1))
         return params
 
     def activate(self,z,activation):
@@ -71,9 +71,9 @@ class NeuralNetwork:
             b = params[f'b{i}']
             x = jp.dot(x,W.T)
             x = x+b.flatten()
-            gamma = self.gamma[f'gamma{i}']
-            beta = self.beta[f'beta{i}']
-            x = self.batch_norm(x, gamma, beta)
+            # gamma = self.gamma[f'gamma{i}']
+            # beta = self.beta[f'beta{i}']
+            # x = self.batch_norm(x, gamma, beta)
             x = self.activate(x,self.activation)
         
         out_index = len(params)//2
