@@ -16,9 +16,10 @@ def heat_plot(data, filename, title="Heatmap", cmap="viridis", colorbar=True, an
         colorbar (bool): Show color bar.
         annot (bool): Annotate cells with data values.
     """
-    sns.set_context("notebook", font_scale=1.4)
+    sns.set_context("notebook", font_scale=0.9)
     fig, ax = plt.subplots(figsize=(10, 8))
     # Create the heatmap
+    
     sns.heatmap(data, cmap=cmap, cbar=colorbar, annot=annot, fmt=".2f", ax=ax)
     # def format_func(value, tick_number):
     #     return f"{value:.3f}"
@@ -53,7 +54,7 @@ def loss_plot(data, filename, title="Loss Over Epochs", xlabel="Epochs", ylabel=
     n_cols = 3  
     n_rows = (n_configs + n_cols - 1) // n_cols  
 
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, n_rows * 4), sharey=True)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, n_rows * 4), sharex='col',  sharey='row')
     axes = axes.flatten()  
 
     for idx, (lr, l2) in enumerate(unique_configs.values):
@@ -69,11 +70,17 @@ def loss_plot(data, filename, title="Loss Over Epochs", xlabel="Epochs", ylabel=
             ax=axes[idx]
         )
         
-        axes[idx].set_title(f"LR: {lr}, L2: {l2}", fontsize=13, fontweight='bold')
+        # axes[idx].set_title(f"LR: {lr}, L2: {l2}", fontsize=13, fontweight='bold')
+        axes[idx].text(0.9, 0.9, f"LR: {lr}, ", fontsize=13, fontweight='bold', ha='center', va='center', 
+        transform=axes[idx].transAxes, bbox=dict(facecolor='white', alpha=0.5, edgecolor='none'))
+        axes[idx].text(0.9, 0.8, f" L2: {l2}", fontsize=13, fontweight='bold', ha='center', va='center', 
+        transform=axes[idx].transAxes, bbox=dict(facecolor='white', alpha=0.5, edgecolor='none'))
         axes[idx].set_xlabel(xlabel,fontsize=13)
+        axes[idx].set_xscale('log')
+        axes[idx].set_yscale('log')
         axes[idx].set_ylabel(ylabel,fontsize=13)
 
-        axes[idx].legend(fontsize=0)
+        axes[idx].legend_.remove()
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='lower center', fontsize=13, ncol=3)
     
@@ -89,6 +96,8 @@ def loss_plot(data, filename, title="Loss Over Epochs", xlabel="Epochs", ylabel=
 plot_path = '/home/sigvar/1_semester/fysstk4155/fysstk_2/project_2/src/utils/'
 
 def activation_plot(data, filename, title="Loss Over Epochs", xlabel="Epochs", ylabel="Loss"):
+    sns.set_context("notebook", font_scale=2)
+
     plt.figure(figsize=(10, 8))
     sns.lineplot(
             data=data,
@@ -112,8 +121,8 @@ if __name__ == "__main__":
 
 
     data = pd.read_csv('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_2/src/utils/results_regression.csv')
-    # torch=data[data['Model']=='PyTorch']
-    # loss_plot(torch, filename="torch_loss_plot", title="torch Training Loss Over Epochs", xlabel="Epochs", ylabel="Loss Value")
+    torch=data[data['Model']=='PyTorch']
+    loss_plot(torch, filename="torch_loss_plot", title="torch Training Loss Over Epochs", xlabel="Epochs", ylabel="Loss Value")
 
     NN = data[data['Model']=='Neural_Network']
     loss_plot(NN, filename="NN_loss_plot", title="NN Training Loss Over Epochs", xlabel="Epochs", ylabel="Loss Value")
@@ -124,6 +133,8 @@ if __name__ == "__main__":
     # heat = heat[heat['Optimizer']=='SGD']
     # heat = heat.sort_values(by=['Learning Rate', 'L2 Penalty'])
     # NN = heat[heat['Model']=='Neural_Network']
+    # NN['Learning Rate'] = NN['Learning Rate'].round(5)
+    # NN['L2 Penalty'] = NN['L2 Penalty'].round(5)
     # NN_heatmap_data = NN.pivot(index="L2 Penalty", columns="Learning Rate", values="Accuracy")
     # heat_plot(NN_heatmap_data, filename="NN_heatmap", title="NN Heatmap", cmap="rocket", annot=True)
 
@@ -131,6 +142,8 @@ if __name__ == "__main__":
     # heat = heat[heat['Optimizer']=='SGD']
     # heat = heat.sort_values(by=['Learning Rate', 'L2 Penalty'])
     # NN = heat[heat['Model']=='Neural_Network']
+    # NN['Learning Rate'] = NN['Learning Rate'].round(5)
+    # NN['L2 Penalty'] = NN['L2 Penalty'].round(5)
     # NN_heatmap_data = NN.pivot(index="L2 Penalty", columns="Learning Rate", values="Accuracy")
     # heat_plot(NN_heatmap_data, filename="NN_heatmap_2", title="NN Heatmap", cmap="rocket", annot=True)
 
@@ -138,22 +151,30 @@ if __name__ == "__main__":
     # heat = pd.read_csv('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_2/src/utils/results_torch_classification.csv')
     # heat = heat[heat['Optimizer']=='SGD']
     # heat = heat.sort_values(by=['Learning Rate', 'L2 Penalty'])
-    # NN = heat[heat['Model']=='PyTorch']
-    # NN_heatmap_data = NN.pivot(index="L2 Penalty", columns="Learning Rate", values="Accuracy")
-    # heat_plot(NN_heatmap_data, filename="torch_heatmap", title="NN Heatmap", cmap="rocket", annot=True)
+    # torch = heat[heat['Model']=='PyTorch']
+    # # decimals = pd.Series([0, 1], index=['Learning Rate', 'L2 Penalty'])
+    # # torch = torch.round(decimals=decimals)
+    # torch['Learning Rate'] = torch['Learning Rate'].round(5)
+    # torch['L2 Penalty'] = torch['L2 Penalty'].round(5)
+    # torch_heatmap_data = torch.pivot(index="L2 Penalty", columns="Learning Rate", values="Accuracy")
+    # heat_plot(torch_heatmap_data, filename="torch_heatmap", title="torch Heatmap", cmap="rocket", annot=True)
 
     # heat = pd.read_csv('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_2/src/utils/results_R_classification.csv')
     # heat = heat[heat['Optimizer']=='SGD']
     # heat = heat.sort_values(by=['Learning Rate', 'L2 Penalty'])
     # R = heat[heat['Model']=='Logistic_regression']
+    # R['Learning Rate'] = R['Learning Rate'].round(8)
+    # R['L2 Penalty'] = R['L2 Penalty'].round(8)
     # R_heatmap_data = R.pivot(index="L2 Penalty", columns="Learning Rate", values="Accuracy")
     # heat_plot(R_heatmap_data, filename="R_heatmap", title="R Heatmap", cmap="rocket", annot=True)
     
-    # heat = pd.read_csv('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_2/src/utils/results_R_classification_long.csv')
-    # heat = heat[heat['Optimizer']=='SGD']
-    # heat = heat.sort_values(by=['Learning Rate', 'L2 Penalty'])
-    # R = heat[heat['Model']=='Logistic_regression']
-    # R_heatmap_data = R.pivot(index="L2 Penalty", columns="Learning Rate", values="Accuracy")
-    # heat_plot(R_heatmap_data, filename="R_heatmap_long", title="R Heatmap", cmap="rocket", annot=True)
+    heat = pd.read_csv('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_2/src/utils/results_R_classification_long.csv')
+    heat = heat[heat['Optimizer']=='SGD']
+    heat = heat.sort_values(by=['Learning Rate', 'L2 Penalty'])
+    R = heat[heat['Model']=='Logistic_regression']
+    R['Learning Rate'] = R['Learning Rate'].round(8)
+    R['L2 Penalty'] = R['L2 Penalty'].round(8)
+    R_heatmap_data = R.pivot(index="L2 Penalty", columns="Learning Rate", values="Accuracy")
+    heat_plot(R_heatmap_data, filename="R_heatmap_long", title="R Heatmap", cmap="rocket", annot=True)
 
     print("Plots saved as 'NN_loss_plot.png' and 'R_loss_plot.png'")
