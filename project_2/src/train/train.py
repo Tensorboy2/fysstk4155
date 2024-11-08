@@ -43,6 +43,7 @@ class Trainer:
         num_batches = len(x_train) // batch_size
         loss_array = np.zeros(epochs)
         prev_loss = 0
+        
         for epoch in range(epochs):
             batch_loss = 0
             indices = np.arange(len(x_train))
@@ -58,28 +59,36 @@ class Trainer:
                 x_batch = x_train_shuffled[i:i + batch_size]
                 y_batch = y_train_shuffled[i:i + batch_size]
 
-
+                # Compute batch loss and gradients
                 batch_lossi = self.loss_fn(params, x_batch, y_batch)
-                grads = grad(self.loss_fn,argnums=0)(params, x_batch, y_batch)
+                grads = grad(self.loss_fn, argnums=0)(params, x_batch, y_batch)
 
+                # Update parameters with optimizer
                 self.optimizer.step(params, grads)
 
                 batch_loss += batch_lossi
+            
             loss = self.loss_fn(params, x_train, y_train)
             loss_array[epoch] = loss
+            
+            # Periodical output is commented (can be enabled if needed)
             # if (epoch + 1) % 40 == 0:
             #     print(f'\nEpoch: {epoch+1}, loss = {loss} , avg_batch_loss= {batch_loss/num_batches}')
-            if abs(loss-prev_loss) < threshold:
-                print(f'Threshold reached: {threshold} > loss ={batch_loss/num_batches}')
+            
+            # Check for convergence
+            if abs(loss - prev_loss) < threshold:
+                print(f'Threshold reached: {threshold} > loss ={batch_loss / num_batches}')
                 break
-            # prev_loss=loss
+                
+            # Check for NAN in loss
             if np.isnan(batch_loss):
                 print('Loss turned nan. Check lr and grads.')
                 break
-            if hasattr(self.optimizer,'square_gradients'):
-                self.optimizer.square_gradients=None
-            if hasattr(self.optimizer,'first_momentum'):
-                self.optimizer.first_momentum=None
+
+            # Reset optimizer state if applicable
+            if hasattr(self.optimizer, 'square_gradients'):
+                self.optimizer.square_gradients = None
+            if hasattr(self.optimizer, 'first_momentum'):
+                self.optimizer.first_momentum = None
+
         return loss_array
-
-
