@@ -1,8 +1,9 @@
 # ignore data sets
-# **/*.csv
+**/*.csv
 
 # pycache
 **/*.pyc
+
 
 .vscode
 .venv

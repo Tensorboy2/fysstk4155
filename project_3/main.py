@@ -1,126 +1,448 @@
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from src.models.RNN import RNN
+from torch.utils.data import DataLoader, TensorDataset
 import pandas as pd
 import numpy as np
-from sklearn.metrics import mean_squared_error, r2_score
-
-data_pth = '/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/stock_data_time.csv'
-
-def main_rnn():
-    sequence_length = 10  # Number of time steps in each sequence
-    train_split = 0.8     # 20% for training
-
-    # Load the scaled dataset
-    data = pd.read_csv('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/stock_data_time.csv')
-    data_values = data.iloc[:, 1:].values  # Exclude the 'Date' column
-
-    # Split into training and test sets
-    n_train = int(len(data_values) * train_split)
-    train_data = data_values[:n_train]
-    test_data = data_values[n_train:]
-
-    # Create sequences for training
-    def create_sequences(data, sequence_length):
-        X, y = [], []
-        for i in range(len(data) - sequence_length):
-            X.append(data[i:i+sequence_length])
-            y.append(data[i+sequence_length])  # Target is the next step
-        return np.array(X), np.array(y)
-
-    # Generate sequences
-    X_train, y_train = create_sequences(train_data, sequence_length)
-    X_test, y_test = create_sequences(test_data, sequence_length)
-
-    # Convert to PyTorch tensors
-    X_train = torch.tensor(X_train, dtype=torch.float32)
-    y_train = torch.tensor(y_train, dtype=torch.float32)
-    X_test = torch.tensor(X_test, dtype=torch.float32)
-    y_test = torch.tensor(y_test, dtype=torch.float32)
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from src.models.RNN import RNN, train_rnn
+from src.models.FFNN import FFNN, train_ffnn
+from torch.utils.data import DataLoader, Dataset
+import matplotlib.pyplot as plt
 
 
-    # Model parameters
-    input_size = X_train.shape[2]  # Number of features per timestep
-    hidden_size = 256           # Can be adjusted based on experiments
-    output_size = y_train.shape[1] # Number of target features
-    num_layers = 8           # Number of RNN layers (adjustable)
+# Paths to data:
+h_o_data_path = '/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/harmonic_occilator_data/h_o_data.csv'
+stock_data_path = '/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/stock_data/stock_data_time.csv'
 
-    # Create the model
-    model = RNN(input_size, hidden_size, output_size, num_layers)
 
-    # Example training setup
-    criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+def main_h_o_FFNN():
+    '''
+    Main function for doing feed forward analysis of the harmonic oscillator.
+    '''
+    data = pd.read_csv(h_o_data_path)
 
-    # Training loop
-    num_epochs = 200
-    train_loss_history = []
-    test_loss_history = []
-    train_mse_history = []
-    test_mse_history = []
-    train_r2_history = []
-    test_r2_history = []
-    for epoch in range(num_epochs):
-        model.train()
-        outputs = model(X_train)
-        loss = criterion(outputs, y_train)
+    input_seq_len = 1
+    hidden_sizes = [64,128,64]
+    target_seq_len = 1
+    num_epochs = 400
+    batch_size = 32
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    X = torch.tensor(data['time'].values, dtype=torch.float32).view(-1,1)
+    y = torch.tensor(data['angle'].values, dtype=torch.float32).view(-1,1)
 
-        train_mse = mean_squared_error(y_train.cpu().numpy(), outputs.cpu().detach().numpy())
-        train_r2 = r2_score(y_train.cpu().numpy(), outputs.cpu().detach().numpy())
+    # train_size = 0.8
 
-        # Calculate test MSE and R²
-        model.eval()
-        with torch.no_grad():
-            test_outputs = model(X_test)
-            test_mse = mean_squared_error(y_test.cpu().numpy(), test_outputs.cpu().numpy())
-            test_r2 = r2_score(y_test.cpu().numpy(), test_outputs.cpu().numpy())
+    train_dataset = TensorDataset(X[:150], y[:150])
+    test_dataset = TensorDataset(X[150:], y[150:])
 
-        # Store metrics
-        train_loss_history.append(loss.item())
-        test_loss_history.append(test_mse)  # You can also use test_loss if you have that
-        train_mse_history.append(train_mse)
-        test_mse_history.append(test_mse)
-        train_r2_history.append(train_r2)
-        test_r2_history.append(test_r2)
-
-        print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}, Train MSE: {train_mse:.4f}, Test MSE: {test_mse:.4f}")
-        print(f"Train R2: {train_r2:.4f}, Test R2: {test_r2:.4f}")
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     
-    # Save loss and accuracy histories to a DataFrame
-    metrics_df = pd.DataFrame({
-        'Epoch': range(1, num_epochs + 1),
-        'Train Loss': train_loss_history,
-        'Test Loss': test_loss_history,
-        'Train MSE': train_mse_history,
-        'Test MSE': test_mse_history,
-        'Train R2': train_r2_history,
-        'Test R2': test_r2_history
-    })
+    ffnn_model = FFNN(input_seq_len,hidden_sizes,target_seq_len)
+    metrics = train_ffnn(ffnn_model, train_loader, test_loader, num_epochs=num_epochs, batch_size=batch_size)
 
-    # Save metrics to CSV
-    metrics_df.to_csv('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/rnn_training_metrics.csv', index=False)
-    print("Training metrics saved to rnn_training_metrics.csv")
+    plt.figure(figsize=(6, 6))
+    plt.plot(metrics["gradient_norms"], label="Gradient norms")
+    plt.xlabel("Index",fontsize=20)
+    plt.ylabel("Gradient Norm",fontsize=20)
+    plt.legend()
+    plt.savefig('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/ho_ffnn_grad_norm.pdf')
 
-    # Predictions and targets
-    model.eval()
-    with torch.no_grad():
-        predictions = model(X_test).cpu().numpy()  # Predictions on test set
-        targets = y_test.cpu().numpy()  # Ground truth targets
+    plt.figure(figsize=(6, 6))
+    plt.plot(metrics["train_loss"], label="Train Loss")
+    plt.plot(metrics["val_loss"], label="Validation Loss")
+    plt.xlabel("Epoch",fontsize=20)
+    plt.ylabel("Loss",fontsize=20)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.legend()
+    plt.savefig('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/ho_ffnn_loss.pdf')
 
-    # Create a DataFrame with predictions and targets
-    results_df = pd.DataFrame({
-        'Target': targets[:, 0],  # Adjust index if needed
-        'Prediction': predictions[:, 0]  # Adjust index if needed
-    })
+    plt.figure(figsize=(7, 6))
+    plt.plot(metrics["train_r2"], label="Train R2")
+    plt.plot(metrics["val_r2"], label="Validation R2")
+    plt.xlabel("Epoch",fontsize=20)
+    plt.ylabel("R2 Score",fontsize=20)
+    plt.legend()
+    plt.savefig('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/ho_ffnn_R2.pdf')
 
-    # Save predictions to CSV
-    results_df.to_csv('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/rnn_predictions.csv', index=False)
-    print("Predictions saved to rnn_predictions.csv")
+    # Extrapolation
+    num_extrapolations = 20
+    all_extrapolations = []
+
+    for _ in range(num_extrapolations):
+        predictions = []
+        ffnn_model = FFNN(input_seq_len,hidden_sizes,target_seq_len)
+
+        _ = train_ffnn(ffnn_model, train_loader, test_loader, num_epochs=400, batch_size=batch_size)
+    
+        ffnn_model.eval()
+        with torch.no_grad():
+            for inputs, labels in test_dataset:
+                output = ffnn_model(inputs)
+                output = output.detach().squeeze()
+                predictions.append(output)
+            all_extrapolations.append(predictions)
+    all_extrapolations = np.array(all_extrapolations)
+    mean_extrapolation = all_extrapolations.mean(axis=0)
+    std_extrapolation = all_extrapolations.std(axis=0)
+    time_indices = np.arange(150, 251)
+    intervals = [1, 2, 3]
+    colors = sns.color_palette("magma", len(intervals))
+    plt.figure(figsize=(6, 6))
+    for i, sigma in enumerate(intervals):
+        lower_bound = mean_extrapolation - sigma * std_extrapolation
+        upper_bound = mean_extrapolation + sigma * std_extrapolation
+        plt.fill_between(
+            time_indices, lower_bound, upper_bound, color=colors[i], alpha=0.4,
+            label=f"{sigma} Std Dev"
+        )
+    data = {
+        "train": data[data.columns[2]].values[:150],
+        "test": data[data.columns[2]].values[150:]
+    }   
+    plt.plot(time_indices, mean_extrapolation, color="black", label="Mean Prediction", linewidth=2)
+    plt.plot(np.arange(len(data["train"])), data["train"], c='b', label="Train Data", linestyle="--")
+    plt.plot(
+        np.arange(len(data["train"]), len(data["train"]) + len(data["test"])),
+        data["test"], c='g', label="Test Data", linestyle="--"
+    )
+    plt.xlabel("Time/Index",fontsize=20)
+    plt.ylabel("Prediction",fontsize=20)
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/ho_ffnn_extrap.pdf')
+
+
+
+class TimeSeriesDataset(Dataset):
+    def __init__(self, data, sequence_length):
+        self.data = data
+        self.sequence_length = sequence_length
+
+    def __len__(self):
+        return len(self.data) - self.sequence_length
+
+    def __getitem__(self, idx):
+        x = self.data[idx:idx + self.sequence_length]
+        y = self.data[idx + self.sequence_length]
+        return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
+
+def main_h_o_RNN():
+    '''
+    Main function for doing extrapolation of the harmonic oscillator using the RNN.
+    '''
+    print(f'Loading data from: '+ h_o_data_path)
+    data = pd.read_csv(h_o_data_path)
+    data_length = len(data)
+    input_size = 1
+    sequence_length = 16 
+    batch_size = 32
+    hidden_sizes = 64
+    num_layers = 1
+    target_seq_len = 1  
+    num_epochs = 100
+    learning_rate = 0.001
+    train_size = 0.75
+
+    x = data[data.columns[2]].values[:150]
+    dataset = TimeSeriesDataset(x, sequence_length)
+    train_len = int(len(dataset) * train_size)
+    val_len = len(dataset) - train_len
+
+    train_dataset, val_dataset = train_test_split(dataset, train_size= train_size,test_size=0.2 )
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size)
+
+    rnn_model = RNN(input_size,hidden_sizes,target_seq_len,num_layers,sequence_length)
+
+    metrics = train_rnn(rnn_model, train_loader, val_loader, num_epochs=num_epochs,learning_rate=learning_rate)
+
+
+    plt.figure(figsize=(6, 6))
+    plt.plot(metrics["gradient_norms"], label="Gradient norms")
+    plt.xlabel("Index",fontsize=20)
+    plt.ylabel("Gradient Norm",fontsize=20)
+    plt.legend()
+    plt.savefig('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/ho_rnn_grad_norm.pdf')
+
+    plt.figure(figsize=(6, 6))
+    plt.plot(metrics["train_loss"], label="Train Loss")
+    plt.plot(metrics["val_loss"], label="Validation Loss")
+    plt.xlabel("Epoch",fontsize=20)
+    plt.ylabel("Loss",fontsize=20)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.legend()
+    plt.savefig('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/ho_rnn_loss.pdf')
+
+    plt.figure(figsize=(7, 6))
+    plt.plot(metrics["train_r2"], label="Train R2")
+    plt.plot(metrics["val_r2"], label="Validation R2")
+    plt.xlabel("Epoch",fontsize=20)
+    plt.ylabel("R2 Score",fontsize=20)
+    plt.legend()
+    plt.savefig('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/ho_rnn_R2.pdf')
+    
+    # Extrapolation 
+    num_future = 100
+    num_extrapolations = 20
+    all_extrapolations = []
+
+    for _ in range(num_extrapolations):
+        predicted_extrapolation = []
+        extrapolation_input = torch.tensor(x[-sequence_length:], dtype=torch.float32).unsqueeze(0).unsqueeze(-1)  # Last sequence
+        rnn_model = RNN(1,hidden_sizes,target_seq_len,num_layers,sequence_length)
+        _ = train_rnn(rnn_model, train_loader, val_loader, num_epochs=100,learning_rate=learning_rate)    
+        rnn_model.eval()
+        with torch.no_grad():
+            for _ in range(num_future):
+                output = rnn_model(extrapolation_input)
+                predicted_extrapolation.append(output.item())
+                extrapolation_input = torch.cat((extrapolation_input[:, 1:, :], output.unsqueeze(-1)), dim=1)
+            all_extrapolations.append(predicted_extrapolation)
+    all_extrapolations = np.array(all_extrapolations)  
+    mean_extrapolation = all_extrapolations.mean(axis=0)
+    std_extrapolation = all_extrapolations.std(axis=0)
+    time_indices = np.arange(151, 251)
+    intervals = [1, 2, 3]
+    colors = sns.color_palette("magma", len(intervals))
+    plt.figure(figsize=(6, 6))
+    for i, sigma in enumerate(intervals):
+        lower_bound = mean_extrapolation - sigma * std_extrapolation
+        upper_bound = mean_extrapolation + sigma * std_extrapolation
+        plt.fill_between(
+            time_indices, lower_bound, upper_bound, color=colors[i], alpha=0.4,
+            label=f"{sigma} Std Dev"
+        )
+    data = {
+        "train": data[data.columns[2]].values[:150],
+        "test": data[data.columns[2]].values[150:]
+    }   
+    plt.plot(time_indices, mean_extrapolation, color="black", label="Mean Prediction", linewidth=2)
+    plt.plot(np.arange(len(data["train"])), data["train"], c='b', label="Train Data", linestyle="--")
+    plt.plot(
+        np.arange(len(data["train"]), len(data["train"]) + len(data["test"])),
+        data["test"], c='g', label="Test Data", linestyle="--"
+    )
+    plt.xlabel("Time/Index",fontsize=20)
+    plt.ylabel("Prediction",fontsize=20)
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/ho_rnn_extrap.pdf')
+    
+
+    
+
+def main__stock_FFNN():
+    '''
+    Main function for extrapolation of the FFNN on the stock data.
+    '''
+    data = pd.read_csv(stock_data_path)
+    X = torch.tensor(np.arange(len(data[data.columns[0]])), dtype=torch.float32).view(-1,1)
+
+    for k in range(1,6):
+        stock_name = data.columns[k]
+        y = torch.tensor(data[data.columns[k]].values, dtype=torch.float32).view(-1,1)
+
+        input_seq_len = 1  
+        hidden_sizes = [64,128,64]
+        target_seq_len = 1  
+        num_epochs = 400
+        batch_size = 32
+        train_size = 0.8
+        train_dataset = TensorDataset(X[:200], y[:200])
+        test_dataset = TensorDataset(X[200:], y[200:])
+
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+        
+        ffnn_model = FFNN(input_seq_len,hidden_sizes,target_seq_len)
+        metrics = train_ffnn(ffnn_model, train_loader, test_loader, num_epochs=num_epochs, batch_size=batch_size)
+
+        plt.figure(figsize=(6, 6))
+        plt.plot(metrics["gradient_norms"], label="Gradient norms")
+        plt.xlabel("Index",fontsize=20)
+        plt.ylabel("Gradient Norm",fontsize=20)
+        plt.legend()
+        plt.savefig('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/'+stock_name+'_ffnn_grad_norm.pdf')
+
+        plt.figure(figsize=(6, 6))
+        plt.plot(metrics["train_loss"], label="Train Loss")
+        plt.plot(metrics["val_loss"], label="Validation Loss")
+        plt.xlabel("Epoch",fontsize=20)
+        plt.ylabel("Loss",fontsize=20)
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.legend()
+        plt.savefig('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/'+stock_name+'_ffnn_loss.pdf')
+
+        plt.figure(figsize=(7, 6))
+        plt.plot(metrics["train_r2"], label="Train R2")
+        plt.plot(metrics["val_r2"], label="Validation R2")
+        plt.xlabel("Epoch",fontsize=20)
+        plt.ylabel("R2 Score",fontsize=20)
+        plt.legend()
+        plt.savefig('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/'+stock_name+'_ffnn_R2.pdf')
+
+        # Extrapolation
+        # num_future = 100
+        num_extrapolations = 20 
+        all_extrapolations = []
+
+        for _ in range(num_extrapolations):
+            predictions = []
+            ffnn_model = FFNN(input_seq_len,hidden_sizes,target_seq_len)
+
+            _ = train_ffnn(ffnn_model, train_loader, test_loader, num_epochs=400, batch_size=batch_size)
+        
+            ffnn_model.eval()
+            with torch.no_grad():
+                for inputs, labels in test_dataset:
+                    output = ffnn_model(inputs)
+                    output = output.detach().squeeze()
+                    predictions.append(output)
+                all_extrapolations.append(predictions)
+        all_extrapolations = np.array(all_extrapolations)
+        mean_extrapolation = all_extrapolations.mean(axis=0)
+        std_extrapolation = all_extrapolations.std(axis=0)
+        time_indices = np.arange(200, 251)
+        intervals = [1, 2, 3]
+        colors = sns.color_palette("magma", len(intervals))
+        plt.figure(figsize=(6, 6))
+        for i, sigma in enumerate(intervals):
+            lower_bound = mean_extrapolation - sigma * std_extrapolation
+            upper_bound = mean_extrapolation + sigma * std_extrapolation
+            plt.fill_between(
+                time_indices, lower_bound, upper_bound, color=colors[i], alpha=0.4,
+                label=f"{sigma} Std Dev"
+            )
+        plot_data = {
+            "train": data[data.columns[k]].values[:200],
+            "test": data[data.columns[k]].values[200:]
+        }   
+        plt.plot(time_indices, mean_extrapolation, color="black", label="Mean Prediction", linewidth=2)
+        plt.plot(np.arange(len(plot_data["train"])), plot_data["train"], c='b', label="Train Data", linestyle="--")
+        plt.plot(
+            np.arange(len(plot_data["train"]), len(plot_data["train"]) + len(plot_data["test"])),
+            plot_data["test"], c='g', label="Test Data", linestyle="--"
+        )
+        plt.xlabel("Time/Index",fontsize=20)
+        plt.ylabel("Prediction",fontsize=20)
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(f'/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/'+stock_name+f'_ffnn_extrap.pdf')
+
+
+def main__stock_RNN():
+    '''
+    Main function for extrapolating using the RNN on the stck data.
+    '''
+    # Load dataset
+    data = pd.read_csv('/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/stock_data/stock_data_time.csv')
+    for k in range(1,6):
+        x = data[data.columns[k]].values[:200]
+        stock_name = data.columns[k]
+
+        sequence_length = 64
+        batch_size = 32
+        hidden_size = 64
+        num_layers = 4
+        target_seq_len = 1
+        num_epochs = 200
+        learning_rate = 0.001
+        train_size = 0.8
+
+        dataset = TimeSeriesDataset(x, sequence_length)
+        train_len = int(len(dataset) * train_size)
+        val_len = len(dataset) - train_len
+        train_dataset, val_dataset = train_test_split(dataset, train_size=train_size, test_size=0.2)
+
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size)
+
+        rnn_model = RNN(input_size=1, hidden_size=hidden_size, output_size=target_seq_len, 
+                        num_layers=num_layers,sequence_length=sequence_length)
+
+        metrics = train_rnn(rnn_model, train_loader, val_loader, num_epochs=num_epochs, learning_rate=learning_rate)
+        plt.figure(figsize=(6, 6))
+        plt.plot(metrics["gradient_norms"], label="Gradient norms")
+        plt.xlabel("Index",fontsize=20)
+        plt.ylabel("Gradient Norm",fontsize=20)
+        plt.legend()
+        plt.savefig(f'/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/'+stock_name+f'_rnn_grad_norm.pdf')
+
+
+        plt.figure(figsize=(6, 6))
+        plt.plot(metrics["train_loss"], label="Train Loss")
+        plt.plot(metrics["val_loss"], label="Validation Loss")
+        plt.xlabel("Epoch",fontsize=20)
+        plt.ylabel("Loss",fontsize=20)
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.legend()
+        plt.savefig(f'/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/'+stock_name+f'_rnn_loss.pdf')
+
+        plt.figure(figsize=(7, 6))
+        plt.plot(metrics["train_r2"], label="Train R2")
+        plt.plot(metrics["val_r2"], label="Validation R2")
+        plt.xlabel("Epoch",fontsize=20)
+        plt.ylabel("R2 Score",fontsize=20)
+        plt.legend()
+        plt.savefig(f'/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/'+stock_name+f'_rnn_R2.pdf')
+
+        # Extrapolation (predict future data beyond training)
+        num_future = 50  
+        num_extrapolations = 20 
+        all_extrapolations = []
+
+        for _ in range(num_extrapolations):
+            predicted_extrapolation = []
+            extrapolation_input = torch.tensor(x[-sequence_length:], dtype=torch.float32).unsqueeze(0).unsqueeze(-1)  # Last sequence
+            rnn_model = RNN(1,hidden_size,target_seq_len,num_layers,sequence_length)
+            _ = train_rnn(rnn_model, train_loader, val_loader, num_epochs=100,learning_rate=learning_rate)    
+            rnn_model.eval()
+            with torch.no_grad():
+                for _ in range(num_future):
+                    output = rnn_model(extrapolation_input)
+                    predicted_extrapolation.append(output.item())
+                    extrapolation_input = torch.cat((extrapolation_input[:, 1:, :], output.unsqueeze(-1)), dim=1)
+                all_extrapolations.append(predicted_extrapolation)
+        all_extrapolations = np.array(all_extrapolations)  
+        mean_extrapolation = all_extrapolations.mean(axis=0)
+        std_extrapolation = all_extrapolations.std(axis=0)
+        time_indices = np.arange(201, 251)
+        intervals = [1, 2, 3]
+        colors = sns.color_palette("magma", len(intervals))
+        plt.figure(figsize=(6, 6))
+        for i, sigma in enumerate(intervals):
+            lower_bound = mean_extrapolation - sigma * std_extrapolation
+            upper_bound = mean_extrapolation + sigma * std_extrapolation
+            plt.fill_between(
+                time_indices, lower_bound, upper_bound, color=colors[i], alpha=0.4,
+                label=f"{sigma} Std Dev"
+            )
+        plot_data = {
+            "train": data[data.columns[k]].values[:200],
+            "test": data[data.columns[k]].values[200:]
+        }   
+        plt.plot(time_indices, mean_extrapolation, color="black", label="Mean Prediction", linewidth=2)
+        plt.plot(np.arange(len(plot_data["train"])), plot_data["train"], c='b', label="Train Data", linestyle="--")
+        plt.plot(
+            np.arange(len(plot_data["train"]), len(plot_data["train"]) + len(plot_data["test"])),
+            plot_data["test"], c='g', label="Test Data", linestyle="--"
+        )
+        plt.xlabel("Time/Index",fontsize=20)
+        plt.ylabel("Prediction",fontsize=20)
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(f'/home/sigvar/1_semester/fysstk4155/fysstk_2/project_3/src/data/plots/'+stock_name+f'_rnn_extrap.pdf')
+
+
 
 if __name__ == '__main__':
-    main_rnn()
+    main_h_o_FFNN()
+    main__stock_FFNN()
+    main_h_o_RNN()
+    main__stock_RNN()
